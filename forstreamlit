@@ -1,0 +1,21 @@
+#建立啟動檔
+import os
+import subprocess
+import sys
+
+def main():
+    # 取得 app.py 路徑（和 EXE 同資料夾）
+    app_path = os.path.join(os.path.dirname(sys.argv[0]), "app.py")
+    
+    # 執行 Streamlit
+    subprocess.run([sys.executable, "-m", "streamlit", "run", app_path])
+
+if __name__ == "__main__":
+    main()
+
+#把主程式命名為app.py
+import streamlit as st
+st.title("Hello Streamlit")
+
+#bash
+pyinstaller run_app.py
