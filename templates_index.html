@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>課表輸入</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 90%;
+            margin: auto;
+        }
+        th, td {
+            border: 1px solid #555;
+            padding: 6px;
+            text-align: center;
+        }
+        th {
+            background-color: #eee;
+        }
+        input {
+            width: 95%;
+        }
+        .submit-btn {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <h2 style="text-align:center;">當學期課表輸入</h2>
+    <form method="POST">
+        <table>
+            <tr>
+                <th>星期 / 節次</th>
+                {% for p in periods %}
+                    <th>{{ p }}</th>
+                {% endfor %}
+            </tr>
+            {% for day in weekdays %}
+            <tr>
+                <td><b>{{ day }}</b></td>
+                {% for p in periods %}
+                <td>
+                    <input type="text" name="{{ day }}_{{ p|replace(' ', '_') }}">
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </table>
+
+        <div class="submit-btn">
+            <button type="submit">下載 CSV 課表</button>
+        </div>
+    </form>
+</body>
+</html>
