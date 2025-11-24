@@ -1,0 +1,239 @@
+'''
+目前它可以做到讓使用者自己輸入任務名稱、提醒時間以及延後時間要多久
+然後可以輸入很多個任務(直到輸入'n'為止)
+還有個小bug就是彈跳視窗要在輸入'n'結束輸入之後才會出現
+
+當按下開始、延後或是完成都會再跳出對應小視窗
+(不過我其實不太知道任務開始鍵意義，但目前想不到應該把它改成什麼，等明天一起討論後我再看要如何增減)
+底下程式我把註解也留著(不然怕我之後看不懂...)
+///我是用Gemini寫的!!!Gemini太強大了\\\
+'''
+
+
+import tkinter as tk
+from tkinter import messagebox
+from datetime import datetime, timedelta
+import time
+import threading
+
+# --- 數據結構：用字典儲存單個任務的資訊 ---
+# 每個任務都會被儲存為一個字典，例如：
+# {'title': '喝水', 'target_time': <datetime object>, 'snooze_minutes': 10}
+TASK_LIST = [] 
+
+def create_reminder_window(task):
+    """
+    創建並顯示置頂的提醒視窗
+    
+    :param task: 觸發提醒的任務字典
+    """
+    root = tk.Tk()
+    root.title("時間管理大師 - 提醒視窗")
+    root.attributes('-topmost', True)
+    
+    # 視窗置中計算
+    window_width = 300
+    window_height = 150
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    center_x = int(screen_width/2 - window_width/2)
+    center_y = int(screen_height/2 - window_height/2)
+    root.geometry(f'{window_width}x{window_height}+{center_x}+{center_y}')
+    
+    # 提醒標籤
+    tk.Label(
+        root, 
+        text=f"⏰ {task['title']}", 
+        font=("微軟正黑體", 16, "bold"), 
+        fg="#293F49",
+        pady=10
+    ).pack()
+
+    # --- 按鈕動作定義 ---
+    
+    def on_start():
+        """點擊 '開始' 按鈕時的動作"""
+        messagebox.showinfo("任務開始!", f"加油!\n祝你順利完成：{task['title']}")
+        root.destroy()
+
+    def on_snooze():
+        """
+        點擊 '延後' 按鈕時的動作
+        新增了在命令列印出更新時間的邏輯
+        """
+        # 計算新的提醒時間
+        current_time = datetime.now()
+        new_time = current_time + timedelta(minutes=task['snooze_minutes'])
+        
+        # 更新任務字典中的目標時間
+        task['target_time'] = new_time
+        
+        # 1. 輸出到命令列：顯示任務時間已更新
+        print("-" * 35)
+        print(f"🔄 **排程更新**：{task['title']}")
+        print(f"   下次提醒時間已更新為：{new_time.strftime('%m/%d %H:%M')}")
+        print("-" * 35)
+
+        # 2. 彈出 Tkinter 訊息框
+        messagebox.showinfo(
+            "任務延後", 
+            f"任務：{task['title']} 已延後 {task['snooze_minutes']} 分鐘。\n下次提醒時間：{new_time.hour:02d}:{new_time.minute:02d}"
+        )
+        root.destroy()
+
+    def on_complete():
+        """點擊 '完成' 按鈕時的動作"""
+        messagebox.showinfo("任務完成", f"{task['title']} 已完成\n辛苦你了!你超級棒。")
+        root.destroy()
+        
+        # 標記任務為完成 (為了讓監控線程停止)
+        task['completed'] = True
+
+        
+    # --- 按鈕佈局 ---
+    
+    button_frame = tk.Frame(root)
+    button_frame.pack(pady=10)
+
+    # 開始按鈕
+    tk.Button(
+        button_frame, 
+        text="開始", 
+        command=on_start, 
+        font=("微軟正黑體", 12), 
+        bg="#85c983", 
+        fg="#ebebe3"
+    ).pack(side=tk.LEFT, padx=5, pady=5)
+
+    # 延後按鈕
+    tk.Button(
+        button_frame, 
+        text=f"延後 ({task['snooze_minutes']}分)", 
+        command=on_snooze, 
+        font=("微軟正黑體", 12)
+    ).pack(side=tk.LEFT, padx=5, pady=5)
+
+    # 完成按鈕
+    tk.Button(
+        button_frame, 
+        text="完成", 
+        command=on_complete, 
+        font=("微軟正黑體", 12), 
+        bg="#83Bec9", 
+        fg="#ebebe3"
+    ).pack(side=tk.LEFT, padx=5, pady=5)
+    
+    root.mainloop()
+
+def check_time_for_task(task):
+    """
+    專門用於監控單一任務時間的函式，會在獨立的執行緒中運行。
+    
+    :param task: 任務字典
+    """
+    while True:
+        # 如果任務被標記為完成，則停止該線程
+        if task.get('completed'):
+            print(f"✅ 任務線程結束: {task['title']}")
+            break
+
+        now = datetime.now()
+        target = task['target_time']
+        
+        # 檢查當前時間是否到達目標時間 (只檢查到分鐘)
+        if now.hour == target.hour and now.minute == target.minute:
+            try:
+                # 彈出視窗，並將當前任務字典傳入
+                create_reminder_window(task)
+            except Exception:
+                # 忽略因視窗關閉而產生的錯誤
+                pass 
+                
+            # 視窗彈出後，等待一分鐘，防止同一分鐘內重複彈出
+            time.sleep(60)
+            
+        else:
+            # 每 10 秒檢查一次時間
+            time.sleep(10)
+
+def collect_user_tasks():
+    """收集使用者輸入的多個任務資訊"""
+    
+    while True:
+        print("-" * 30)
+        task_name = input("事件名稱（輸入 'n' 結束輸入）：")
+        if task_name.lower() == 'n':
+            break
+
+        while True:
+            try:
+                time_str = input("請輸入提醒時間（HH:MM，例如 14:30）：")
+                h, m = map(int, time_str.split(':'))
+                
+                # 簡單驗證時間格式
+                if not (0 <= h <= 23 and 0 <= m <= 59):
+                    raise ValueError("小時或分鐘不在有效範圍內。")
+
+                # 設定目標時間為今天最近的那個時間點
+                now = datetime.now()
+                target_dt = now.replace(hour=h, minute=m, second=0, microsecond=0)
+                
+                # 如果設定的時間已經過了今天，則將提醒設定為明天
+                if target_dt <= now:
+                    target_dt += timedelta(days=1)
+                    print(f"備註: {h:02d}:{m:02d} 已過，已自動設定為明天 {h:02d}:{m:02d}")
+                    
+                break
+            except ValueError as e:
+                print(f"輸入錯誤，請檢查時間格式（HH:MM）：{e}")
+
+        while True:
+            try:
+                snooze_min = int(input("請輸入延後時間（分鐘）："))
+                break
+            except ValueError:
+                print("輸入錯誤，請輸入有效的數字。")
+        
+        # 將任務資訊儲存到列表中
+        TASK_LIST.append({
+            'title': task_name,
+            'target_time': target_dt,
+            'snooze_minutes': snooze_min,
+            'completed': False # 新增狀態標記
+        })
+        print(f"✅ 任務已新增。下次提醒時間：{target_dt.strftime('%H:%M')}。")
+
+
+# --- 主程式執行區 ---
+if __name__ == "__main__":
+    
+    # 1. 收集所有任務
+    collect_user_tasks()
+
+    if not TASK_LIST:
+        print("未設定任何任務，程式結束。")
+    else:
+        print("\n" + "=" * 40)
+        print("    時間管理大師 - 任務規劃、告別拖延    ")
+        print("=" * 40)
+        print("請勿關閉此命令列視窗，它負責背景計時。")
+        print("已啟動任務：")
+        
+        # 2. 為每個任務啟動一個獨立的執行緒
+        for task in TASK_LIST:
+            # 輸出任務資訊
+            print(f"- {task['title']}，下次提醒時間：{task['target_time'].strftime('%m/%d %H:%M')}")
+            
+            # 啟動獨立線程
+            thread = threading.Thread(target=check_time_for_task, args=(task,))
+            thread.daemon = True # 設定為守護線程，主程式結束時它也會結束
+            thread.start()
+        
+        print("\n所有任務線程已在背景運行...")
+
+        # 3. 保持主線程存活，以便讓背景線程運行
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("\n🚨 提醒程式已手動關閉。")
