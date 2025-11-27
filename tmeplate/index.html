@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>互動課表</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<h1>本學期課表</h1>
+
+<button id="saveBtn">儲存 CSV</button>
+<button onclick="exportPNG()">匯出 PNG</button>
+
+<table id="schedule">
+    <tr>
+        <th>節數</th>
+        {% for d in days %}
+        <th>星期{{ d }}</th>
+        {% endfor %}
+    </tr>
+
+    {% for p in periods %}
+    <tr>
+        <th>第 {{ p }} 節</th>
+        {% for d in days %}
+        <td class="cell"
+            data-day="{{ d }}"
+            data-period="{{ p }}">
+            {{ schedule.get((d|string, p|string), "") }}
+        </td>
+        {% endfor %}
+    </tr>
+    {% endfor %}
+</table>
+
+<script src="/static/script.js"></script>
+</body>
+</html>
