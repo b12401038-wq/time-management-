@@ -1,0 +1,25 @@
+body {
+    font-family: "Microsoft JhengHei";
+    text-align: center;
+    background: #fff7fb;
+}
+
+table {
+    margin: auto;
+    border-collapse: collapse;
+}
+
+td, th {
+    border: 1px solid #ccc;
+    width: 120px;
+    height: 55px;
+}
+
+.cell {
+    cursor: pointer;
+    background-color: #ffffff;
+}
+
+.cell.conflict {
+    background-color: #ffcccc !important;
+}
